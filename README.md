@@ -25,3 +25,4 @@ The settings in "local.config" overwrites "config" but will itself not be overwr
 ## Tips
 
 # J730GM-StockKernel
+# J730GM-StockKernel
