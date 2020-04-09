@@ -1,0 +1,24 @@
+From 3840ec19c65ba3f3b8eaa62e0a96455a85eace66 Mon Sep 17 00:00:00 2001
+From: Svirusx <wirusmod@gmail.com>
+Date: Tue, 24 Mar 2020 12:30:52 +0100
+Subject: [PATCH] fix f_hid.c error
+
+---
+ drivers/usb/gadget/function/f_hid.c | 6 ------
+ 1 file changed, 6 deletions(-)
+
+diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
+index 741b28816c4..1c2fe744d83 100644
+--- a/drivers/usb/gadget/function/f_hid.c
++++ b/drivers/usb/gadget/function/f_hid.c
+@@ -875,9 +875,3 @@ void ghid_cleanup(void)
+ 	class_destroy(hidg_class);
+ 	hidg_class = NULL;
+ }
+-// fix for implicit declaration of function 'free_ep_req'
+-void free_ep_req(struct usb_ep *ep, struct usb_request *req)
+-{
+-	kfree(req->buf);
+-	usb_ep_free_request(ep, req);
+-}
+

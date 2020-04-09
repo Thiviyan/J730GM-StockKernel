@@ -1,0 +1,30 @@
+From cd77f0f54950bcbeaeaaa1ec665be1b1454a9194 Mon Sep 17 00:00:00 2001
+From: Svirusx <wirusmod@gmail.com>
+Date: Sat, 25 May 2019 12:08:20 +0200
+Subject: [PATCH] f_hid.c little changes
+
+---
+ drivers/usb/gadget/function/f_hid.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/usb/gadget/function/f_hid.c b/drivers/usb/gadget/function/f_hid.c
+index 72b6f744de8..741b28816c4 100644
+--- a/drivers/usb/gadget/function/f_hid.c
++++ b/drivers/usb/gadget/function/f_hid.c
+@@ -560,13 +560,13 @@ static void hidg_disable(struct usb_function *f)
+ 	usb_ep_disable(hidg->out_ep);
+ 	hidg->out_ep->driver_data = NULL;
+ 
+-	spin_lock_irqsave(&hidg->read_spinlock, flags);
++	spin_lock_irqsave(&hidg->spinlock, flags);
+ 	list_for_each_entry_safe(list, next, &hidg->completed_out_req, list) {
+ 		free_ep_req(hidg->out_ep, list->req);
+ 		list_del(&list->list);
+ 		kfree(list);
+ 	}
+-	spin_unlock_irqrestore(&hidg->read_spinlock, flags);
++	spin_unlock_irqrestore(&hidg->spinlock, flags);
+ }
+ 
+ static int hidg_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
+

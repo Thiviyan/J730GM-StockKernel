@@ -1,0 +1,33 @@
+From d7e26c246f5ad519137241165312377431b6a976 Mon Sep 17 00:00:00 2001
+From: Svirusx <wirusmod@gmail.com>
+Date: Wed, 10 Apr 2019 01:26:46 +0200
+Subject: [PATCH] Bluetooth: Carwhisperer fix
+
+---
+ net/bluetooth/sco.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/net/bluetooth/sco.c b/net/bluetooth/sco.c
+index 64f3a2f7a2c..7247140f557 100644
+--- a/net/bluetooth/sco.c
++++ b/net/bluetooth/sco.c
+@@ -521,9 +521,6 @@ static int sco_sock_bind(struct socket *sock, struct sockaddr *addr, int addr_le
+ 	if (!addr || addr->sa_family != AF_BLUETOOTH)
+ 		return -EINVAL;
+ 
+-	if (addr_len < sizeof(struct sockaddr_sco))
+-		return -EINVAL;
+-
+ 	lock_sock(sk);
+ 
+ 	if (sk->sk_state != BT_OPEN) {
+@@ -553,8 +550,7 @@ static int sco_sock_connect(struct socket *sock, struct sockaddr *addr, int alen
+ 
+ 	BT_DBG("sk %p", sk);
+ 
+-	if (alen < sizeof(struct sockaddr_sco) ||
+-	    addr->sa_family != AF_BLUETOOTH)
++	if (!addr || addr->sa_family != AF_BLUETOOTH)
+ 		return -EINVAL;
+ 
+ 	if (sk->sk_state != BT_OPEN && sk->sk_state != BT_BOUND)

@@ -1,0 +1,93 @@
+--- drivers/usb/gadget/android.c
++++ drivers/usb/gadget/android.c
+@@ -1365,6 +1402,7 @@ static struct android_usb_function *supported_functions[] = {
+ 	&conn_gadget_function,
+ #endif
+ 	&midi_function,
++	&hid_function,
+ 	NULL
+ };
+ 
+@@ -1544,52 +1582,61 @@ functions_store(struct device *pdev, struct device_attribute *attr,
+ 		if (!name)
+ 			continue;
+ 
+-		is_ffs = 0;
++
+ 		strlcpy(aliases, dev->ffs_aliases, sizeof(aliases));
+ 		a = aliases;
+ 
+ 		while (a) {
+ 			char *alias = strsep(&a, ",");
+ 			if (alias && !strcmp(name, alias)) {
+-				is_ffs = 1;
++				name = "ffs";
+ 				break;
+ 			}
+ 		}
+ 
+-		if (is_ffs) {
+-			if (ffs_enabled)
+-				continue;
+-			err = android_enable_function(dev, "ffs");
+-			if (err)
+-				pr_err("android_usb: Cannot enable ffs (%d)\n",
+-									err);
+-			else
+-				ffs_enabled = 1;
++		if (ffs_enabled && !strcmp(name, "ffs"))
++			continue;
++
++		if (hid_enabled && !strcmp(name, "hid"))
+ 			continue;
+-		}
+ 
+ 		err = android_enable_function(dev, name);
+-		if (err)
++		if (err) {
+ 			pr_err("android_usb: Cannot enable '%s' (%d)\n",
+-							   name, err);
+-#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
++												name, err);
++			continue;
++			}
++		if (!strcmp(name, "ffs"))
++			ffs_enabled = 1;
++
++		if (!strcmp(name, "hid"))
++				hid_enabled = 1;
+ 
++#ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+ 			/* Enable ACM function, if MTP is enabled. */
+ 			if (!strcmp(name, "mtp")) {
+-				err = android_enable_function(dev, "acm");
++				name = "acm";
++				err = android_enable_function(dev, name);
+ 				if (err)
+-					pr_err(
+-					"android_usb: Cannot enable '%s'\n",
+-					name);
++					pr_err("android_usb: Cannot enable '%s' (%d)",
++								name, err);
+ 			}
+ 
+-			if (!strcmp(name, "rndis")) {
++			if (!strcmp(name, "rndis"))
+ 				g_rndis = 1;
+-			}
+ 
+ #endif
+ 	}
+ 
++	/* Always enable HID gadget function. */
++	if (!hid_enabled) {
++		name = "hid";
++		err = android_enable_function(dev, name);
++		if (err)
++			pr_err("android_usb: Cannot enable '%s' (%d)",
++						name, err);
++	}
++
+ 	mutex_unlock(&dev->mutex);
+ 
+ 	return size;

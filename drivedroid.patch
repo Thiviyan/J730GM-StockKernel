@@ -1,0 +1,93 @@
+From 39618668f9770dae98b9911f85c1b51ec23e43e6 Mon Sep 17 00:00:00 2001
+From: Svirusx <wirusmod@gmail.com>
+Date: Sun, 25 Aug 2019 23:26:32 +0200
+Subject: [PATCH] added DriveDroid Support
+
+---
+ drivers/usb/gadget/function/f_mass_storage.c |  5 +++
+ drivers/usb/gadget/function/storage_common.c | 37 ++++++++++++++++++++
+ 2 files changed, 42 insertions(+)
+
+diff --git a/drivers/usb/gadget/function/f_mass_storage.c b/drivers/usb/gadget/function/f_mass_storage.c
+index 2dff9971d04..2ee75596cca 100644
+--- a/drivers/usb/gadget/function/f_mass_storage.c
++++ b/drivers/usb/gadget/function/f_mass_storage.c
+@@ -2590,6 +2590,7 @@ static int fsg_main_thread(void *common_)
+ static DEVICE_ATTR(ro, 0644, fsg_show_ro, fsg_store_ro);
+ static DEVICE_ATTR(nofua, 0644, fsg_show_nofua, fsg_store_nofua);
+ static DEVICE_ATTR(file, 0644, fsg_show_file, fsg_store_file);
++static DEVICE_ATTR(cdrom, 0644, fsg_show_cdrom, fsg_store_cdrom);
+ 
+ static struct device_attribute dev_attr_ro_cdrom =
+ 	__ATTR(ro, 0444, fsg_show_ro, NULL);
+@@ -2719,6 +2720,9 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
+ 		if (rc)
+ 			goto error_luns;
+ 		rc = device_create_file(&curlun->dev, &dev_attr_nofua);
++		if (rc)
++			goto error_luns;
++		rc = device_create_file(&curlun->dev, &dev_attr_cdrom);
+ 		if (rc)
+ 			goto error_luns;
+ 
+@@ -2839,6 +2843,7 @@ static void fsg_common_release(struct kref *ref)
+ 		/* In error recovery common->nluns may be zero. */
+ 		for (; i; --i, ++lun) {
+ 			device_remove_file(&lun->dev, &dev_attr_nofua);
++			device_remove_file(&lun->dev, &dev_attr_cdrom);
+ 			device_remove_file(&lun->dev,
+ 					   lun->cdrom
+ 					 ? &dev_attr_ro_cdrom
+diff --git a/drivers/usb/gadget/function/storage_common.c b/drivers/usb/gadget/function/storage_common.c
+index dbce3a9074e..ffbf316f1d5 100644
+--- a/drivers/usb/gadget/function/storage_common.c
++++ b/drivers/usb/gadget/function/storage_common.c
+@@ -565,6 +565,14 @@ static ssize_t fsg_show_nofua(struct device *dev, struct device_attribute *attr,
+ 	return sprintf(buf, "%u\n", curlun->nofua);
+ }
+ 
++static ssize_t fsg_show_cdrom (struct device *dev, struct device_attribute *attr,
++			   char *buf)
++{
++	struct fsg_lun  *curlun = fsg_lun_from_dev(dev);
++
++	return sprintf(buf, "%d\n", curlun->cdrom);
++}
++
+ static ssize_t fsg_show_file(struct device *dev, struct device_attribute *attr,
+ 			     char *buf)
+ {
+@@ -675,3 +683,32 @@ static ssize_t fsg_store_file(struct device *dev, struct device_attribute *attr,
+ 	up_write(filesem);
+ 	return (rc < 0 ? rc : count);
+ }
++
++static ssize_t fsg_store_cdrom(struct device *dev, struct device_attribute *attr,
++				  const char *buf, size_t count)
++{
++	ssize_t    rc;
++	struct fsg_lun  *curlun = fsg_lun_from_dev(dev);
++	struct rw_semaphore  *filesem = dev_get_drvdata(dev);
++	unsigned  cdrom;
++
++	rc = kstrtouint(buf, 2, &cdrom);
++	if (rc)
++		return rc;
++
++	/*
++	 * Allow the cdrom status to change only while the
++	 * backing file is closed.
++	 */
++	down_read(filesem);
++	if (fsg_lun_is_open(curlun)) {
++		LDBG(curlun, "cdrom status change prevented\n");
++		rc = -EBUSY;
++	} else {
++		curlun->cdrom = cdrom;
++		LDBG(curlun, "cdrom status set to %d\n", curlun->cdrom);
++		rc = count;
++	}
++	up_read(filesem);
++	return rc;
++}
+
